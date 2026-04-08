@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+*.db
+log_monitor.log
+log_monitor.log.*
