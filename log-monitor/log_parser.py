@@ -114,8 +114,15 @@ class JavaLogParser:
             f.seek(start_offset)
             line_num = 0
 
-            for line in f:
+            # readline()을 사용하여 tell()과 호환되도록 함
+            # (for line in f: 순회 중에는 tell() 사용 불가)
+            while True:
+                line = f.readline()
+                if not line:
+                    break
+
                 line_num += 1
+                current_offset = f.tell()
                 stripped = line.rstrip('\n\r')
 
                 parsed = self.parse_line(stripped, filepath, line_num)
@@ -127,7 +134,7 @@ class JavaLogParser:
                             current_entry, stacktrace_lines
                         )
                         if entry and entry.exception_type:
-                            yield entry, f.tell()
+                            yield entry, current_offset
                         stacktrace_lines = []
 
                     current_entry = parsed

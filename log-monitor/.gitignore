@@ -3,3 +3,6 @@ __pycache__/
 *.db
 log_monitor.log
 log_monitor.log.*
+test-logs/
+test_log_monitor.log
+test_log_monitor.log.*
