@@ -1,0 +1,160 @@
+# ============================================================
+# Java Log Trend Analyzer - Configuration
+# ============================================================
+
+# --- 로그 파일 설정 ---
+log_files:
+  # 모니터링 대상 로그 파일 경로 (여러 개 지정 가능)
+  paths:
+    - /var/log/java-app/application.log
+    - /var/log/java-app/error.log
+  # 로그 디렉토리 glob 패턴 (선택)
+  # glob_patterns:
+  #   - /var/log/java-app/*.log
+
+  # 로그 타임스탬프 포맷 (Java SimpleDateFormat 호환)
+  timestamp_formats:
+    - "%Y-%m-%d %H:%M:%S"          # 2024-01-15 14:30:00
+    - "%Y-%m-%d %H:%M:%S,%f"       # 2024-01-15 14:30:00,123
+    - "%Y-%m-%dT%H:%M:%S"          # ISO 8601
+    - "%d-%b-%Y %H:%M:%S"          # 15-Jan-2024 14:30:00
+
+  # 로그 인코딩
+  encoding: utf-8
+
+# --- 분석 시간 윈도우 설정 ---
+analysis:
+  # 분석 주기 (초) - 이 간격마다 로그를 수집/분석
+  interval_seconds: 60
+
+  # 기준선(baseline) 윈도우: 최근 N개 윈도우의 데이터로 정상 패턴 계산
+  baseline_window_count: 60
+
+  # 최소 데이터 포인트 수: 이만큼 쌓여야 이상 탐지 시작
+  min_data_points: 10
+
+# --- Exception 분류 및 가중치 ---
+exception_weights:
+  # 심각도별 기본 가중치 (높을수록 중요)
+  critical:
+    weight: 1.0
+    patterns:
+      - "OutOfMemoryError"
+      - "StackOverflowError"
+      - "ThreadDeath"
+      - "VirtualMachineError"
+      - "ClassNotFoundException"
+      - "NoClassDefFoundError"
+      - "LinkageError"
+  high:
+    weight: 0.8
+    patterns:
+      - "NullPointerException"
+      - "SQLException"
+      - "IOException"
+      - "ConnectionException"
+      - "TimeoutException"
+      - "AuthenticationException"
+      - "SecurityException"
+  medium:
+    weight: 0.5
+    patterns:
+      - "IllegalArgumentException"
+      - "IllegalStateException"
+      - "UnsupportedOperationException"
+      - "ConcurrentModificationException"
+      - "ArithmeticException"
+  low:
+    weight: 0.2
+    patterns:
+      - "NumberFormatException"
+      - "ParseException"
+      - "DateTimeParseException"
+      - "JsonParseException"
+      - "ValidationException"
+
+  # 분류되지 않은 Exception의 기본 가중치
+  default_weight: 0.3
+
+# --- 이상 탐지 알고리즘 설정 ---
+algorithms:
+  # 1) EWMA (지수가중이동평균) - 최근 데이터에 가중치를 더 부여
+  ewma:
+    enabled: true
+    alpha: 0.3              # 평활 계수 (0~1, 높을수록 최근 데이터 중시)
+    threshold_multiplier: 2.0  # EWMA 대비 N배 초과 시 이상
+    weight_in_score: 0.35   # 최종 스코어에서 이 알고리즘의 비중
+
+  # 2) Z-Score - 표준편차 기반 이상 탐지
+  zscore:
+    enabled: true
+    threshold: 2.5          # Z-Score가 이 값 초과 시 이상
+    weight_in_score: 0.35   # 최종 스코어에서의 비중
+
+  # 3) Rate of Change (변화율) - 급격한 증감 탐지
+  roc:
+    enabled: true
+    threshold_percent: 200  # 이전 윈도우 대비 N% 이상 변화 시 이상
+    weight_in_score: 0.30   # 최종 스코어에서의 비중
+
+# --- 복합 스코어링 설정 ---
+scoring:
+  # 알림 발송 임계값 (0.0 ~ 1.0)
+  alert_threshold: 0.6
+
+  # 긴급 알림 임계값 (이 이상이면 즉시 알림)
+  critical_threshold: 0.85
+
+  # 연속 이상 탐지 횟수 - 이 횟수 연속 초과해야 알림 발송 (false positive 방지)
+  consecutive_anomaly_count: 2
+
+  # 알림 쿨다운 (초) - 동일 유형 알림 재발송 최소 간격
+  alert_cooldown_seconds: 300
+
+# --- 알림 설정 ---
+alerting:
+  # 이메일 알림
+  email:
+    enabled: false
+    smtp_host: "smtp.gmail.com"
+    smtp_port: 587
+    use_tls: true
+    username: "your-email@gmail.com"
+    # 환경변수 참조: ${ENV_VAR_NAME} 형식
+    password: "${SMTP_PASSWORD}"
+    from_address: "log-monitor@yourcompany.com"
+    to_addresses:
+      - "ops-team@yourcompany.com"
+      - "dev-lead@yourcompany.com"
+
+  # SMS 알림 (Twilio)
+  sms:
+    enabled: false
+    # Twilio 계정 정보 (환경변수 권장)
+    account_sid: "${TWILIO_ACCOUNT_SID}"
+    auth_token: "${TWILIO_AUTH_TOKEN}"
+    from_number: "+1234567890"
+    to_numbers:
+      - "+0987654321"
+
+  # Webhook 알림 (Slack, Teams 등)
+  webhook:
+    enabled: false
+    urls:
+      - "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+    timeout_seconds: 10
+
+# --- 상태 저장소 설정 ---
+state:
+  # SQLite DB 파일 경로
+  db_path: "./log_monitor_state.db"
+
+  # 히스토리 데이터 보관 기간 (일)
+  retention_days: 30
+
+# --- 로깅 설정 ---
+monitoring_log:
+  level: INFO       # DEBUG, INFO, WARNING, ERROR
+  file: "./log_monitor.log"
+  max_bytes: 10485760   # 10MB
+  backup_count: 3

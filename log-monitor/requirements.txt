@@ -1,0 +1,9 @@
+# Java Log Trend Monitor - Dependencies
+# Python 3.10+ 필요
+
+# YAML 설정 파일 파싱
+PyYAML>=6.0
+
+# (선택) Twilio SDK - SMS 알림 사용 시
+# pip install twilio
+# twilio>=8.0

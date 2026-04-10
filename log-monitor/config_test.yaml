@@ -1,0 +1,98 @@
+# ============================================================
+# 로컬 테스트용 설정
+# log_generator.py와 함께 사용
+#
+# 테스트 실행 순서:
+#   터미널 1) python log_generator.py synthetic -o ./test-logs/application.log -d 600
+#   터미널 2) python log_monitor.py -c config_test.yaml -m daemon
+# ============================================================
+
+log_files:
+  paths:
+    - ./test-logs/application.log
+  timestamp_formats:
+    - "%Y-%m-%d %H:%M:%S,%f"
+    - "%Y-%m-%d %H:%M:%S"
+  encoding: utf-8
+
+analysis:
+  # 테스트에서는 짧은 주기로 분석 (10초)
+  interval_seconds: 10
+  baseline_window_count: 30
+  # 빠른 탐지 시작을 위해 최소 데이터 포인트 축소
+  min_data_points: 3
+
+exception_weights:
+  critical:
+    weight: 1.0
+    patterns:
+      - "OutOfMemoryError"
+      - "StackOverflowError"
+      - "NoClassDefFoundError"
+      - "ClassNotFoundException"
+  high:
+    weight: 0.8
+    patterns:
+      - "NullPointerException"
+      - "SQLException"
+      - "IOException"
+      - "SocketTimeoutException"
+      - "DataAccessException"
+  medium:
+    weight: 0.5
+    patterns:
+      - "IllegalArgumentException"
+      - "IllegalStateException"
+      - "ConcurrentModificationException"
+  low:
+    weight: 0.2
+    patterns:
+      - "NumberFormatException"
+      - "ParseException"
+      - "ValidationException"
+      - "JsonParseException"
+  default_weight: 0.3
+
+algorithms:
+  ewma:
+    enabled: true
+    alpha: 0.3
+    threshold_multiplier: 2.0
+    weight_in_score: 0.35
+  zscore:
+    enabled: true
+    threshold: 2.5
+    weight_in_score: 0.35
+  roc:
+    enabled: true
+    threshold_percent: 200
+    weight_in_score: 0.30
+
+scoring:
+  # 테스트에서는 낮은 임계값으로 알림 확인 용이하게
+  alert_threshold: 0.5
+  critical_threshold: 0.8
+  # 연속 1회만으로도 알림 (테스트용)
+  consecutive_anomaly_count: 1
+  # 쿨다운 짧게 (30초)
+  alert_cooldown_seconds: 30
+
+alerting:
+  # 테스트에서는 모든 알림 채널 비활성화 (로그로만 확인)
+  email:
+    enabled: false
+  sms:
+    enabled: false
+  webhook:
+    enabled: false
+
+state:
+  db_path: "/tmp/test_log_monitor_state.db"
+  retention_days: 7
+
+monitoring_log:
+  # 테스트에서는 DEBUG 레벨로 상세 확인
+  level: DEBUG
+  file: "/tmp/test_log_monitor.log"
+  max_bytes: 10485760
+  backup_count: 3
